@@ -43,7 +43,7 @@
 | 단계 | 기능 | 설명 |
 | :--- | :--- | :--- |
 | **01. 레퍼런스 탐색** | 유튜브 검색 & 직링크 | 키워드/채널 검색 또는 쇼츠 직링크(`https://youtube.com/shorts/...`) 입력 |
-| **02. 오디오 & STT** | 음성 추출 및 자막화 | `yt-dlp` 고음질 음원 추출 + OpenAI Whisper 자동 전사 |
+| **02. 오디오 & STT** | 음성 추출 및 자막화 | `yt-dlp` 고음질 음원 추출 + 로컬 faster-whisper 자동 전사 (무료, 오프라인) |
 | **03. AI 심층 분석** | 떡상 공식 구조화 | 첫 3초 후킹 공식, 텐션 곡선, 리메이크 추천 주제 5선 도출 |
 | **04. 대본 초안 생성** | 2종 맞춤형 초안 | 상식파괴형(Draft A) vs 스토리텔링형(Draft B) + 후킹 제목 3선 |
 | **05. 음성 & 씬 분할** | 1.2배속 TTS & 문장 쪼개기 | 참조 보이스 클로닝 + 단어 단위 타임스탬프 기반 4~8개 씬 자동 분할 |
@@ -111,8 +111,12 @@ cp .env.example .env
 
 `.env` 파일을 열고 사용할 API 키를 입력합니다:
 ```env
-# [필수] OpenAI API 키 (GPT-4o 대본 분석/생성 및 Whisper STT에 사용)
-OPENAI_API_KEY=sk-proj-...
+# [필수] Claude API 키 (대본 분석/생성에 사용, 기본 모델 claude-opus-5-5)
+CLAUDE_API_KEY=sk-ant-...
+
+# [선택] 로컬 STT(faster-whisper) 모델 크기와 장치
+WHISPER_MODEL=small
+WHISPER_DEVICE=cpu
 
 # [선택] YouTube Data API 키 (키워드/채널 검색 시 필요, 직링크 사용 시 생략 가능)
 YOUTUBE_API_KEY=AIzaSy...
