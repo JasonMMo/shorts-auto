@@ -17,17 +17,17 @@ def test_local_settings_override_env(tmp_path: Path, monkeypatch):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
     (config_dir / "local.settings.json").write_text(
-        '{"openai_api_key":"local-key","bgm_volume":0.25,"output_dir":"custom_outputs"}',
+        '{"claude_api_key":"local-key","bgm_volume":0.25,"output_dir":"custom_outputs"}',
         encoding="utf-8",
     )
     (tmp_path / ".env").write_text(
-        "OPENAI_API_KEY=env-key\nBGM_VOLUME=0.10\nOUTPUT_DIR=outputs\n",
+        "CLAUDE_API_KEY=env-key\nBGM_VOLUME=0.10\nOUTPUT_DIR=outputs\n",
         encoding="utf-8",
     )
 
     settings = load_settings(tmp_path)
 
-    assert settings.openai_api_key == "local-key"
+    assert settings.claude_api_key == "local-key"
     assert settings.bgm_volume == 0.25
     assert settings.output_dir == "custom_outputs"
 
@@ -51,23 +51,23 @@ def test_reference_phase_settings_have_safe_defaults(tmp_path, monkeypatch):
 
     settings = load_settings(tmp_path)
 
-    assert settings.openai_transcription_model == "whisper-1"
-    assert settings.openai_analysis_model == "gpt-4.1-mini"
+    assert settings.whisper_model == "small"
+    assert settings.claude_analysis_model == "claude-opus-5-5"
     assert settings.yt_dlp_binary == "yt-dlp"
     assert settings.reference_audio_filename == "reference_audio.wav"
 
 
 def test_reference_phase_env_overrides(monkeypatch, tmp_path):
     clear_settings_env(monkeypatch)
-    monkeypatch.setenv("OPENAI_TRANSCRIPTION_MODEL", "custom-transcribe")
-    monkeypatch.setenv("OPENAI_ANALYSIS_MODEL", "custom-analysis")
+    monkeypatch.setenv("WHISPER_MODEL", "medium")
+    monkeypatch.setenv("CLAUDE_ANALYSIS_MODEL", "custom-analysis")
     monkeypatch.setenv("YT_DLP_BINARY", "/usr/local/bin/yt-dlp")
     monkeypatch.setenv("REFERENCE_AUDIO_FILENAME", "custom_reference.wav")
 
     settings = load_settings(tmp_path)
 
-    assert settings.openai_transcription_model == "custom-transcribe"
-    assert settings.openai_analysis_model == "custom-analysis"
+    assert settings.whisper_model == "medium"
+    assert settings.claude_analysis_model == "custom-analysis"
     assert settings.yt_dlp_binary == "/usr/local/bin/yt-dlp"
     assert settings.reference_audio_filename == "custom_reference.wav"
 
