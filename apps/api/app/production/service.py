@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from openai import OpenAI
 
+from app.core.llm import DEFAULT_CLAUDE_MODEL, claude_json, claude_text, create_claude_client, parse_json_text
 from app.core.paths import find_repo_root
 from app.core.settings import AppSettings
 from app.production.models import (
@@ -223,10 +223,10 @@ def generate_tts_for_project(project_dir: Path, settings: AppSettings) -> Path:
 
 
 def _refine_stt_text_with_llm(
-    client: OpenAI,
+    client: Any,
     segments: list[dict],
     script_text: str,
-    model: str = "gpt-4o-mini",
+    model: str = DEFAULT_CLAUDE_MODEL,
 ) -> list[str]:
     """
     STT 세그먼트별 텍스트를 원본 대본을 참조하여 숫자/단위/고유명사 오탈자 위주로 1:1 교정합니다.
@@ -260,20 +260,11 @@ def _refine_stt_text_with_llm(
 """
 
     refined_results: list[str] = [seg["text"].strip() for seg in segments]
+    if client is None:
+        return refined_results
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.0,
-        )
-        content = response.choices[0].message.content.strip()
-        if content.startswith("```json"):
-            content = content[7:-3].strip()
-        elif content.startswith("```"):
-            content = content[3:-3].strip()
-
-        parsed = json.loads(content)
+        parsed = claude_json(client, prompt, model=model)
         if isinstance(parsed, list) and len(parsed) == len(segments):
             for i, seg in enumerate(segments):
                 orig_text = seg["text"].strip()
@@ -322,30 +313,11 @@ def align_subtitles_and_scenes_for_project(project_dir: Path, settings: AppSetti
     else:
         script_text = ""
 
-    client = OpenAI(api_key=settings.openai_api_key)
+    # 1. 로컬 Whisper STT (faster-whisper) — 파일 크기 제한 없음
+    from app.references.ai_clients import LocalWhisperTranscriptionClient
 
-    # 1. Whisper STT 호출
-    file_size = os.path.getsize(wav_path)
-    temp_mp3 = None
-    target_path = wav_path
-    if file_size > 25 * 1024 * 1024:
-        temp_mp3 = project_dir / "temp_whisper_input.mp3"
-        cmd = ["ffmpeg", "-i", str(wav_path), "-b:a", "128k", str(temp_mp3), "-y"]
-        subprocess.run(cmd, capture_output=True, check=True)
-        target_path = temp_mp3
-
-    try:
-        with open(target_path, "rb") as audio_file:
-            transcript = client.audio.transcriptions.create(
-                file=audio_file,
-                model=settings.openai_transcription_model or "whisper-1",
-                response_format="verbose_json",
-                timestamp_granularities=["segment"],
-            )
-        raw_segments = getattr(transcript, "segments", []) or []
-    finally:
-        if temp_mp3 and temp_mp3.exists():
-            temp_mp3.unlink()
+    transcript = LocalWhisperTranscriptionClient(settings.whisper_model, settings.whisper_device).transcribe(wav_path)
+    raw_segments = transcript.get("segments", []) or []
 
     # 무효 세그먼트 필터링
     valid_segments = []
@@ -365,8 +337,11 @@ def align_subtitles_and_scenes_for_project(project_dir: Path, settings: AppSetti
     raw_stt_path.write_text(json.dumps(valid_segments, ensure_ascii=False, indent=2), encoding="utf-8")
 
     # 2. LLM 대본 대조 교정
-    llm_model = "gpt-4o-mini" if "mini" in settings.openai_analysis_model else settings.openai_analysis_model
-    refined_texts = _refine_stt_text_with_llm(client, valid_segments, script_text, model=llm_model)
+    # 키가 없으면 교정 단계를 건너뛰고 STT 원문을 그대로 쓴다
+    client = create_claude_client(settings.claude_api_key) if settings.claude_api_key else None
+    refined_texts = _refine_stt_text_with_llm(
+        client, valid_segments, script_text, model=settings.claude_analysis_model
+    )
 
     # 3. 씬 분할 및 scene_data.json 생성
     scenes: list[SceneItem] = []
@@ -591,7 +566,7 @@ def generate_concept_kit_and_video_scenes(
     sentence_count = len(sentences)
     numbered_sentences = "\n".join([f"{i+1}. {s}" for i, s in enumerate(sentences)])
 
-    client = OpenAI(api_key=settings.openai_api_key)
+    client = create_claude_client(settings.claude_api_key)
     prompt = f"""
 당신은 세계 최고의 AI 쇼츠 영상 디렉터입니다. {style.system_persona}
 주어진 쇼츠 대본과 STT 타임스탬프를 바탕으로:
@@ -748,19 +723,7 @@ def generate_concept_kit_and_video_scenes(
   ]
 }}
 """
-    model_name = "gpt-4o-mini" if "mini" in settings.openai_analysis_model else settings.openai_analysis_model
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
-    )
-    content = response.choices[0].message.content.strip()
-    if content.startswith("```json"):
-        content = content[7:-3].strip()
-    elif content.startswith("```"):
-        content = content[3:-3].strip()
-
-    data = json.loads(content)
+    data = claude_json(client, prompt, model=settings.claude_analysis_model)
     ck_dict = data.get("concept_kit", {})
     ck_dict["visual_style_id"] = style.id
     if not ck_dict.get("visual_style"):
@@ -1908,26 +1871,7 @@ def generate_scene_image_for_project(
         except Exception as e:
             print(f"[Higgsfield Image Generate Error - Scene {scene_id}] {e}")
 
-    # 2. OpenAI DALL-E 3 시도
-    try:
-        client = OpenAI(api_key=settings.openai_api_key)
-        image_resp = client.images.generate(
-            model="dall-e-3",
-            prompt=prompt[:950],
-            size="1024x1792",
-            quality="standard",
-            n=1,
-        )
-        dalle_url = image_resp.data[0].url
-        if dalle_url:
-            resp = httpx.get(dalle_url, timeout=60.0)
-            if resp.status_code == 200:
-                start_image_path.write_bytes(resp.content)
-                return _finalize_image(start_image_path)
-    except Exception:
-        pass
-
-    # 3. Fallback 그래픽 생성
+    # 2. Fallback 그래픽 생성 (Claude는 이미지 생성 API가 없어 DALL-E 단계는 제거)
     _generate_fallback_clay_image(start_image_path, scene_id, prompt, is_final=False)
     return _finalize_image(start_image_path)
 
@@ -2096,8 +2040,7 @@ def refine_and_regenerate_scene(
         except Exception:
             pass
 
-    client = OpenAI(api_key=settings.openai_api_key)
-    model_llm = "gpt-4o-mini" if "mini" in settings.openai_analysis_model else settings.openai_analysis_model
+    client = create_claude_client(settings.claude_api_key)
 
     # 🎬 씬 매칭(원테이크) 여부에 따른 조건부 프레이밍 분기:
     # 체크된 경우(is_matched_mode = True):
@@ -2165,19 +2108,10 @@ def refine_and_regenerate_scene(
   "start_image_prompt": "완벽하게 재작성된 영문 이미지 프롬프트"
 }}
 """
-        response = client.chat.completions.create(
-            model=settings.openai_analysis_model or "gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-        )
-        content = response.choices[0].message.content.strip()
-        if content.startswith("```json"):
-            content = content[7:-3].strip()
-        elif content.startswith("```"):
-            content = content[3:-3].strip()
+        content = claude_text(client, prompt, model=settings.claude_analysis_model)
 
         try:
-            parsed = json.loads(content)
+            parsed = parse_json_text(content)
             if parsed.get("start_image_prompt"):
                 target_scene["start_image_prompt"] = parsed["start_image_prompt"].strip()
         except Exception:
@@ -2227,19 +2161,10 @@ def refine_and_regenerate_scene(
   "video_prompt": "완벽하게 재작성된 영문 비디오 프롬프트"
 }}
 """
-        response = client.chat.completions.create(
-            model=settings.openai_analysis_model or "gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-        )
-        content = response.choices[0].message.content.strip()
-        if content.startswith("```json"):
-            content = content[7:-3].strip()
-        elif content.startswith("```"):
-            content = content[3:-3].strip()
+        content = claude_text(client, prompt, model=settings.claude_analysis_model)
 
         try:
-            parsed = json.loads(content)
+            parsed = parse_json_text(content)
             if parsed.get("video_prompt"):
                 target_scene["video_prompt"] = parsed["video_prompt"].strip()
         except Exception:
@@ -2288,19 +2213,10 @@ def refine_and_regenerate_scene(
   "video_prompt": "완벽하게 재작성된 영문 비디오 프롬프트"
 }}
 """
-        response = client.chat.completions.create(
-            model=settings.openai_analysis_model or "gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-        )
-        content = response.choices[0].message.content.strip()
-        if content.startswith("```json"):
-            content = content[7:-3].strip()
-        elif content.startswith("```"):
-            content = content[3:-3].strip()
+        content = claude_text(client, prompt, model=settings.claude_analysis_model)
 
         try:
-            parsed = json.loads(content)
+            parsed = parse_json_text(content)
             if parsed.get("start_image_prompt"):
                 target_scene["start_image_prompt"] = parsed["start_image_prompt"].strip()
             if parsed.get("video_prompt"):
@@ -2517,9 +2433,9 @@ def recommend_motion_for_scene(
 
     recommendations: list[MotionRecommendationItem] = []
 
-    if settings.openai_api_key:
+    if settings.claude_api_key:
         try:
-            client = OpenAI(api_key=settings.openai_api_key)
+            client = create_claude_client(settings.claude_api_key)
             prompt = f"""당신은 세계 최고의 AI 쇼츠 카메라 연출 감독이자 프롬프트 엔지니어입니다.
 aicameramovements.com의 12대 핵심 카메라 모션 라이브러리를 바탕으로, 현재 씬의 대본 문맥과 시각적 상황에 가장 극적인 몰입감과 텐션을 주는 상위 2~3개의 카메라 모션을 추천하고, 각각에 대한 완성형 비디오 프롬프트를 작성하세요.
 
@@ -2551,19 +2467,9 @@ aicameramovements.com의 12대 핵심 카메라 모션 라이브러리를 바탕
   ]
 }}
 """
-            model_name = "gpt-4o-mini" if "mini" in settings.openai_analysis_model else settings.openai_analysis_model
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-            )
-            content = response.choices[0].message.content.strip()
-            if content.startswith("```json"):
-                content = content[7:-3].strip()
-            elif content.startswith("```"):
-                content = content[3:-3].strip()
+            content = claude_text(client, prompt, model=settings.claude_analysis_model)
 
-            data = json.loads(content)
+            data = parse_json_text(content)
             for item in data.get("recommendations", []):
                 m_id = item.get("movement_id", "")
                 meta = CORE_MOVEMENTS_MAP.get(m_id)
@@ -2646,9 +2552,9 @@ def apply_motion_to_scene(
     movement_name = meta.name if meta else movement_id
 
     new_prompt = ""
-    if settings and settings.openai_api_key:
+    if settings and settings.claude_api_key:
         try:
-            client = OpenAI(api_key=settings.openai_api_key)
+            client = create_claude_client(settings.claude_api_key)
             prompt = f"""당신은 AI 쇼츠 영상 디렉터입니다.
 현재 씬에 지정된 카메라 모션 '{movement_name}'(ID: {movement_id})을 적용하여, aicameramovements.com 표준 영문 4단 문법으로 완성도 높은 비디오 프롬프트를 작성하세요.
 
@@ -2669,18 +2575,8 @@ def apply_motion_to_scene(
   "video_prompt": "완성된 영문 video_prompt"
 }}
 """
-            model_name = "gpt-4o-mini" if "mini" in settings.openai_analysis_model else settings.openai_analysis_model
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-            )
-            content = response.choices[0].message.content.strip()
-            if content.startswith("```json"):
-                content = content[7:-3].strip()
-            elif content.startswith("```"):
-                content = content[3:-3].strip()
-            res_data = json.loads(content)
+            content = claude_text(client, prompt, model=settings.claude_analysis_model)
+            res_data = parse_json_text(content)
             new_prompt = res_data.get("video_prompt", "").strip()
         except Exception:
             new_prompt = ""
@@ -2880,25 +2776,7 @@ def generate_thumbnail_image_for_project(
         except Exception:
             pass
 
-    from app.references.openai_client import create_openai_client
-    client = create_openai_client(settings)
-    res = client.images.generate(
-        model="dall-e-3",
-        prompt=final_prompt,
-        size="1024x1792",
-        quality="standard",
-        n=1,
-    )
-    img_url = res.data[0].url
-    if not img_url:
-        raise ValueError("DALL-E 3에서 이미지 URL을 받지 못했습니다.")
-    resp = httpx.get(img_url, timeout=60.0)
-    resp.raise_for_status()
-    bg_path.write_bytes(resp.content)
-    try:
-        render_thumbnail_image(project_dir, title=title, source_image=bg_path)
-    except Exception:
-        shutil.copy2(bg_path, target_path)
-    return target_path
+    # Claude에는 이미지 생성 API가 없으므로 DALL-E 폴백은 제거됨
+    raise RuntimeError("썸네일 배경 이미지 생성에 실패했습니다. Higgsfield 또는 Google Flow 모델을 확인해주세요.")
 
 
