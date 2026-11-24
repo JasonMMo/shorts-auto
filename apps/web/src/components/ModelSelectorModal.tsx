@@ -58,15 +58,6 @@ export const IMAGE_MODELS: readonly ModelOption[] = [
     tags: ["포토리얼", "텍스처"],
     iconType: "flux"
   },
-  {
-    id: "dall-e-3",
-    name: "OpenAI DALL-E 3",
-    provider: "OpenAI Direct",
-    platform: "higgsfield",
-    description: "OpenAI API 직접 연결을 통한 창의적 스타일 일러스트레이션",
-    tags: ["클래식"],
-    iconType: "gpt"
-  },
 
   // === Google Flow CLI 이미지 모델 ===
   {

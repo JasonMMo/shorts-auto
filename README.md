@@ -32,9 +32,17 @@
 
 **Shorts Auto**는 유튜브 쇼츠의 흥행 공식을 데이터 기반으로 분석하고, 기획/대본 작성/음성 합성/AI 비디오 생성/자막 및 타이틀 렌더링까지 전 과정을 로컬 웹 대시보드에서 유기적으로 수행할 수 있는 자동화 플랫폼입니다.
 
-- **FastAPI 백엔드:** 비동기 작업 큐, 유튜브 오디오 추출, Whisper STT, GPT 대본 생성, Remotion 및 FFmpeg 렌더링 파이프라인 제어
+- **FastAPI 백엔드:** 비동기 작업 큐, 유튜브 오디오 추출, 로컬 Whisper STT(faster-whisper), Claude 대본 분석/생성, Remotion 및 FFmpeg 렌더링 파이프라인 제어
 - **Vite React 프론트엔드:** 단계별 진행 상황 실시간 모니터링, 초안 선택, 씬별 프롬프트 수정 및 미리보기를 지원하는 직관적인 대시보드
 - **Remotion 비디오 렌더러:** 타임스탬프 기반 자막 싱크, 상단 고정 상시 노출 타이틀 카드, 오디오/비디오 자동 믹싱
+
+> 🤖 **Claude 기반 포크:** 원본 저장소의 OpenAI 의존성을 걷어내고 다음과 같이 바꿨습니다.
+>
+> | 기능 | 원본 (OpenAI) | 이 포크 |
+> | :--- | :--- | :--- |
+> | 대본 분석·생성, STT 교정, 컨셉 키트 | GPT-4o / gpt-4.1-mini | Claude (`claude-opus-5-5`, 거절 시 서버 측 폴백) |
+> | 음성 전사(STT) | OpenAI Whisper API | 로컬 faster-whisper (무료, 오프라인) |
+> | 이미지 생성 | DALL-E 3 폴백 | 제거 — Higgsfield / Google Flow 사용, 씬은 클레이 그래픽으로 폴백 |
 
 ---
 
@@ -43,7 +51,7 @@
 | 단계 | 기능 | 설명 |
 | :--- | :--- | :--- |
 | **01. 레퍼런스 탐색** | 유튜브 검색 & 직링크 | 키워드/채널 검색 또는 쇼츠 직링크(`https://youtube.com/shorts/...`) 입력 |
-| **02. 오디오 & STT** | 음성 추출 및 자막화 | `yt-dlp` 고음질 음원 추출 + OpenAI Whisper 자동 전사 |
+| **02. 오디오 & STT** | 음성 추출 및 자막화 | `yt-dlp` 고음질 음원 추출 + 로컬 faster-whisper 자동 전사 (무료, 오프라인) |
 | **03. AI 심층 분석** | 떡상 공식 구조화 | 첫 3초 후킹 공식, 텐션 곡선, 리메이크 추천 주제 5선 도출 |
 | **04. 대본 초안 생성** | 2종 맞춤형 초안 | 상식파괴형(Draft A) vs 스토리텔링형(Draft B) + 후킹 제목 3선 |
 | **05. 음성 & 씬 분할** | 1.2배속 TTS & 문장 쪼개기 | 참조 보이스 클로닝 + 단어 단위 타임스탬프 기반 4~8개 씬 자동 분할 |
@@ -80,7 +88,7 @@
 ### 2) 개발 런타임
 - **Node.js**: `v18.0.0` 이상 ([다운로드](https://nodejs.org/))
 - **pnpm**: `v9.0.0` 이상 (`npm i -g pnpm`)
-- **Python**: `3.11` 이상 ([다운로드](https://python.org/))
+- **Python**: `3.11` ~ `3.13` ([다운로드](https://python.org/)) — 고정된 `pydantic==2.9.2`가 3.14용 휠을 제공하지 않습니다
 - **uv** (권장, 초고속 파이썬 패키지 관리자):
   ```bash
   # macOS/Linux
@@ -101,6 +109,12 @@ cd shorts-auto
 
 # 2. Node.js 의존성 설치 (모노레포 루트)
 pnpm install
+
+# 3. 백엔드 Python 의존성 설치 (anthropic, faster-whisper 포함)
+cd apps/api
+uv venv --python 3.12 .venv
+uv pip install --python .venv/Scripts/python.exe -r requirements.txt   # macOS/Linux: .venv/bin/python
+cd ../..
 ```
 
 ### Step 2. 환경 변수 설정 (`.env`)
@@ -111,8 +125,12 @@ cp .env.example .env
 
 `.env` 파일을 열고 사용할 API 키를 입력합니다:
 ```env
-# [필수] OpenAI API 키 (GPT-4o 대본 분석/생성 및 Whisper STT에 사용)
-OPENAI_API_KEY=sk-proj-...
+# [필수] Claude API 키 (대본 분석/생성에 사용, 기본 모델 claude-opus-5-5)
+CLAUDE_API_KEY=sk-ant-...
+
+# [선택] 로컬 STT(faster-whisper) 모델 크기와 장치
+WHISPER_MODEL=small
+WHISPER_DEVICE=cpu
 
 # [선택] YouTube Data API 키 (키워드/채널 검색 시 필요, 직링크 사용 시 생략 가능)
 YOUTUBE_API_KEY=AIzaSy...
@@ -242,3 +260,13 @@ pnpm --filter @shorts-auto/web build
 
 #### Q3. outputs 폴더에 파일이 많은데 깃허브에 올라가나요?
 - **답변:** 아니오. `outputs/` 디렉토리는 깃허브에 빈 디렉토리(`.gitkeep`)로만 생성되며, 내부의 모든 프로젝트 생성 파일(`outputs/*`)은 `.gitignore`에 의해 자동으로 배제됩니다.
+
+#### Q4. 첫 STT 단계가 오래 걸립니다.
+- **원인:** 로컬 faster-whisper가 첫 실행 때 모델(`WHISPER_MODEL`, 기본 `small`)을 내려받습니다. 이후에는 캐시를 사용합니다.
+- **해결:** 더 빠르게 하려면 `.env`에서 `WHISPER_MODEL=base`로, 더 정확하게 하려면 `medium`으로 바꾸세요. NVIDIA GPU가 있으면 `WHISPER_DEVICE=cuda`로 설정합니다.
+
+#### Q5. `Claude API key is missing` 오류가 납니다.
+- **해결:** 저장소 루트의 `.env`에 `CLAUDE_API_KEY`(또는 `ANTHROPIC_API_KEY`)를 넣고 서버를 다시 시작하세요. 분석 모델은 `CLAUDE_ANALYSIS_MODEL`로 바꿀 수 있습니다.
+
+#### Q6. DALL-E 3 모델이 목록에서 사라졌습니다.
+- **답변:** Claude에는 이미지 생성 API가 없어 DALL-E 경로를 제거했습니다. Higgsfield 또는 Google Flow 이미지 모델을 선택하세요.

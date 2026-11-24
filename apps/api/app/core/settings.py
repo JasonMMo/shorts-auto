@@ -20,7 +20,7 @@ class SubtitleStyle(BaseModel):
 
 
 class AppSettings(BaseModel):
-    openai_api_key: str = ""
+    claude_api_key: str = ""
     youtube_api_key: str = ""
     higgsfield_api_key: str = ""
     qwen3_tts_base_url: str = "http://127.0.0.1:7860"
@@ -33,8 +33,10 @@ class AppSettings(BaseModel):
     bgm_volume: float = 0.18
     output_dir: str = "outputs"
     default_shorts_duration_seconds: int = 45
-    openai_transcription_model: str = "whisper-1"
-    openai_analysis_model: str = "gpt-4.1-mini"
+    # 로컬 STT (faster-whisper) 모델 크기: tiny | base | small | medium | large-v3
+    whisper_model: str = "small"
+    whisper_device: str = "cpu"
+    claude_analysis_model: str = "claude-opus-5-5"
     yt_dlp_binary: str = "yt-dlp"
     reference_audio_filename: str = "reference_audio.wav"
     subtitle_style: SubtitleStyle = Field(default_factory=SubtitleStyle)
@@ -51,7 +53,9 @@ class AppSettings(BaseModel):
 
 
 ENV_TO_FIELD = {
-    "OPENAI_API_KEY": "openai_api_key",
+    # ANTHROPIC_API_KEY 먼저, CLAUDE_API_KEY가 있으면 덮어쓴다 (뒤 항목 우선)
+    "ANTHROPIC_API_KEY": "claude_api_key",
+    "CLAUDE_API_KEY": "claude_api_key",
     "YOUTUBE_API_KEY": "youtube_api_key",
     "HIGGSFIELD_API_KEY": "higgsfield_api_key",
     "QWEN3_TTS_BASE_URL": "qwen3_tts_base_url",
@@ -61,8 +65,9 @@ ENV_TO_FIELD = {
     "BGM_VOLUME": "bgm_volume",
     "OUTPUT_DIR": "output_dir",
     "DEFAULT_SHORTS_DURATION_SECONDS": "default_shorts_duration_seconds",
-    "OPENAI_TRANSCRIPTION_MODEL": "openai_transcription_model",
-    "OPENAI_ANALYSIS_MODEL": "openai_analysis_model",
+    "WHISPER_MODEL": "whisper_model",
+    "WHISPER_DEVICE": "whisper_device",
+    "CLAUDE_ANALYSIS_MODEL": "claude_analysis_model",
     "YT_DLP_BINARY": "yt_dlp_binary",
     "REFERENCE_AUDIO_FILENAME": "reference_audio_filename",
 }

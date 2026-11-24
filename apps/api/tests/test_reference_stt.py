@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from app.references.files import REFERENCE_RAW_STT_FILE, REFERENCE_SCRIPT_FILE
-from app.references.openai_clients import write_reference_stt_outputs
+from app.references.ai_clients import write_reference_stt_outputs
 
 
 def test_write_reference_stt_outputs_saves_raw_json_and_script(tmp_path: Path):

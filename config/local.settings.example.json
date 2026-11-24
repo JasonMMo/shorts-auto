@@ -1,5 +1,5 @@
 {
-  "openai_api_key": "",
+  "claude_api_key": "",
   "youtube_api_key": "",
   "higgsfield_api_key": "",
   "qwen3_tts_base_url": "http://127.0.0.1:7860",
@@ -9,8 +9,9 @@
   "bgm_volume": 0.18,
   "output_dir": "outputs",
   "default_shorts_duration_seconds": 45,
-  "openai_transcription_model": "whisper-1",
-  "openai_analysis_model": "gpt-4.1-mini",
+  "whisper_model": "small",
+  "whisper_device": "cpu",
+  "claude_analysis_model": "claude-opus-5-5",
   "yt_dlp_binary": "yt-dlp",
   "reference_audio_filename": "reference_audio.wav",
   "subtitle_style": {

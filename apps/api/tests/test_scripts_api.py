@@ -75,7 +75,7 @@ class FailingScriptClient:
         self.model = model
 
     def analyze(self, prompt: str):
-        raise RuntimeError("openai unavailable")
+        raise RuntimeError("claude unavailable")
 
 
 def create_project(client: TestClient) -> str:
@@ -111,7 +111,7 @@ def test_scripts_state_defaults_empty(tmp_path: Path):
 def test_generate_select_and_finalize_script(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(create_app(repo_root=tmp_path, analysis_client_factory=FakeScriptClient))
     project_id = create_project(client)
     project_dir = tmp_path / "outputs" / project_id
@@ -149,7 +149,7 @@ def test_generate_select_and_finalize_script(tmp_path: Path):
 def test_generate_candidates_requires_analysis(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(create_app(repo_root=tmp_path, analysis_client_factory=FakeScriptClient))
     project_id = create_project(client)
 
@@ -162,7 +162,7 @@ def test_generate_candidates_requires_analysis(tmp_path: Path):
 def test_finalize_requires_selected_candidate(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(create_app(repo_root=tmp_path, analysis_client_factory=FakeScriptClient))
     project_id = create_project(client)
 
@@ -175,7 +175,7 @@ def test_finalize_requires_selected_candidate(tmp_path: Path):
 def test_generate_failure_marks_job_failed(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(create_app(repo_root=tmp_path, analysis_client_factory=FailingScriptClient))
     project_id = create_project(client)
     write_reference_inputs(tmp_path / "outputs" / project_id)
@@ -184,5 +184,5 @@ def test_generate_failure_marks_job_failed(tmp_path: Path):
     project = client.get(f"/api/projects/{project_id}").json()["project"]
 
     assert response.status_code == 400
-    assert "openai unavailable" in response.json()["detail"]
+    assert "claude unavailable" in response.json()["detail"]
     assert project["job_history"][-1]["state"] == "failed"
