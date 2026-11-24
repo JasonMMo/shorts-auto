@@ -100,7 +100,7 @@ def test_job_get_post_patch_happy_path(tmp_path: Path):
         json={
             "job_type": "script",
             "label": "대본 생성",
-            "provider": "openai",
+            "provider": "claude",
             "command": "generate script",
             "input_paths": ["inputs/topic.txt"],
         },
@@ -120,7 +120,7 @@ def test_job_get_post_patch_happy_path(tmp_path: Path):
     assert initial_jobs.json()["jobs"] == []
     assert created.status_code == 200
     assert created.json()["job"]["job_type"] == "script"
-    assert created.json()["job"]["provider"] == "openai"
+    assert created.json()["job"]["provider"] == "claude"
     assert created.json()["job"]["command"] == "generate script"
     assert created.json()["job"]["started_at"] is None
     assert created.json()["job"]["ended_at"] is None
@@ -204,7 +204,7 @@ def test_settings_status_exposes_key_presence_not_secret_values(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
     (config_dir / "local.settings.json").write_text(
-        '{"openai_api_key":"openai-secret","youtube_api_key":"youtube-secret",'
+        '{"claude_api_key":"claude-secret","youtube_api_key":"youtube-secret",'
         '"higgsfield_api_key":"higgs-secret","reference_voice_text":"secret reference text"}',
         encoding="utf-8",
     )
@@ -213,7 +213,7 @@ def test_settings_status_exposes_key_presence_not_secret_values(tmp_path: Path):
     response = client.get("/api/settings/status")
 
     assert response.status_code == 200
-    assert response.json()["openai_api_key"] is True
+    assert response.json()["claude_api_key"] is True
     assert response.json()["youtube_api_key"] is True
     assert response.json()["higgsfield_api_key"] is True
     assert response.json()["reference_voice_text"] is True
