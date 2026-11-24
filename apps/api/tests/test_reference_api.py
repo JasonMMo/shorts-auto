@@ -86,7 +86,7 @@ class FailingTranscriptionClient:
         self.model = model
 
     def transcribe(self, audio_path: Path):
-        raise RuntimeError("openai unavailable")
+        raise RuntimeError("claude unavailable")
 
 
 class FakeAnalysisClient:
@@ -417,7 +417,7 @@ def test_audio_upload_replaces_previous_reference_audio_extension(tmp_path: Path
 def test_reference_stt_endpoint_creates_script(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(
         create_app(
             repo_root=tmp_path,
@@ -447,7 +447,7 @@ def test_reference_stt_endpoint_creates_script(tmp_path: Path):
 def test_reference_stt_rerun_clears_stale_analysis(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(
         create_app(
             repo_root=tmp_path,
@@ -474,7 +474,7 @@ def test_reference_stt_rerun_clears_stale_analysis(tmp_path: Path):
 def test_reference_stt_uses_uploaded_audio_extension(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(
         create_app(
             repo_root=tmp_path,
@@ -499,7 +499,7 @@ def test_reference_stt_auto_extracts_selected_reference_audio_when_missing(tmp_p
     config_dir = tmp_path / "config"
     config_dir.mkdir()
     (config_dir / "local.settings.json").write_text(
-        '{"youtube_api_key":"key","openai_api_key":"key"}',
+        '{"youtube_api_key":"key","claude_api_key":"key"}',
         encoding="utf-8",
     )
     client = TestClient(
@@ -532,7 +532,7 @@ def test_reference_stt_auto_extracts_selected_reference_audio_when_missing(tmp_p
 def test_reference_stt_requires_audio_file(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(
         create_app(
             repo_root=tmp_path,
@@ -551,7 +551,7 @@ def test_reference_stt_requires_audio_file(tmp_path: Path):
 def test_reference_stt_failing_provider_marks_job_failed(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(
         create_app(
             repo_root=tmp_path,
@@ -567,16 +567,16 @@ def test_reference_stt_failing_provider_marks_job_failed(tmp_path: Path):
     project = client.get(f"/api/projects/{project_id}").json()["project"]
 
     assert response.status_code == 400
-    assert "openai unavailable" in response.json()["detail"]
+    assert "claude unavailable" in response.json()["detail"]
     assert project["job_history"][-1]["state"] == "failed"
-    assert "openai unavailable" in project["job_history"][-1]["error_message"]
+    assert "claude unavailable" in project["job_history"][-1]["error_message"]
     assert "reference_raw_stt" not in project["generated_files"]
 
 
 def test_reference_stt_does_not_fallback_when_recorded_audio_is_missing(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(
         create_app(
             repo_root=tmp_path,
@@ -604,7 +604,7 @@ def test_reference_stt_does_not_fallback_when_recorded_audio_is_missing(tmp_path
 def test_reference_analysis_endpoint_creates_report(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(
         create_app(
             repo_root=tmp_path,
@@ -636,7 +636,7 @@ def test_reference_analysis_endpoint_creates_report(tmp_path: Path):
 def test_reference_analysis_requires_script(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(
         create_app(
             repo_root=tmp_path,
@@ -655,7 +655,7 @@ def test_reference_analysis_requires_script(tmp_path: Path):
 def test_reference_analysis_failing_provider_marks_job_failed(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(
         create_app(
             repo_root=tmp_path,
@@ -680,7 +680,7 @@ def test_reference_analysis_failing_provider_marks_job_failed(tmp_path: Path):
 def test_reference_analysis_failed_rerun_clears_stale_analysis(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     success_client = TestClient(
         create_app(
             repo_root=tmp_path,
@@ -716,7 +716,7 @@ def test_reference_analysis_failed_rerun_clears_stale_analysis(tmp_path: Path):
 def test_reference_analysis_rejects_invalid_payload(tmp_path: Path):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "local.settings.json").write_text('{"openai_api_key":"key"}', encoding="utf-8")
+    (config_dir / "local.settings.json").write_text('{"claude_api_key":"key"}', encoding="utf-8")
     client = TestClient(
         create_app(
             repo_root=tmp_path,
