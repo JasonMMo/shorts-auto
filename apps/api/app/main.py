@@ -10,7 +10,7 @@ from app.core.settings import load_settings
 from app.jobs.router import create_jobs_router
 from app.projects.router import create_projects_router
 from app.references.audio import extract_reference_audio
-from app.references.openai_clients import OpenAIAnalysisClient, OpenAITranscriptionClient
+from app.references.ai_clients import ClaudeAnalysisClient, LocalWhisperTranscriptionClient
 from app.references.router import create_references_router
 from app.production.router import create_production_router
 from app.references.youtube import YouTubeClient
@@ -21,8 +21,8 @@ def create_app(
     repo_root: Path | None = None,
     youtube_client_factory=YouTubeClient,
     audio_extractor=extract_reference_audio,
-    transcription_client_factory=OpenAITranscriptionClient,
-    analysis_client_factory=OpenAIAnalysisClient,
+    transcription_client_factory=LocalWhisperTranscriptionClient,
+    analysis_client_factory=ClaudeAnalysisClient,
 ) -> FastAPI:
     root = repo_root or find_repo_root()
     settings = load_settings(root)
@@ -51,7 +51,7 @@ def create_app(
     @app.get("/api/settings/status")
     def settings_status():
         return {
-            "openai_api_key": bool(settings.openai_api_key),
+            "claude_api_key": bool(settings.claude_api_key),
             "youtube_api_key": bool(settings.youtube_api_key),
             "higgsfield_api_key": bool(settings.higgsfield_api_key),
             "qwen3_tts_base_url": settings.qwen3_tts_base_url,
