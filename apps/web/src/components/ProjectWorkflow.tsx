@@ -94,7 +94,7 @@ export function ProjectWorkflow({
         ? "succeeded"
         : "waiting",
       message: isSttBusy
-        ? "Running OpenAI STT..."
+        ? "Running local Whisper STT..."
         : sttStatus?.message || (
           sttStatus?.state === "succeeded"
             ? "Reference STT complete."
