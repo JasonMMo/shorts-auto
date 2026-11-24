@@ -160,8 +160,8 @@ def create_production_router(
                 "production_align",
                 "Align subtitles and split scenes",
                 input_paths=[TTS_AUDIO_FILENAME, "final_script.md"],
-                provider="openai",
-                command="whisper-1",
+                provider="faster-whisper+claude",
+                command=settings.whisper_model,
             )
             job_id = job.job_id
             update_job_state(outputs, project_id, job.job_id, "running", "Transcribing and aligning scenes")
@@ -277,7 +277,7 @@ def create_production_router(
                 "production_concepts",
                 f"Generate visual concept kit and continuous video scenes ({visual_style_id})",
                 input_paths=["final_script.md", SCENE_DATA_FILENAME],
-                provider="openai",
+                provider="claude",
                 command="generate_concepts",
             )
             job_id = job.job_id
