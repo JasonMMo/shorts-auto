@@ -23,8 +23,8 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
       ) : (
         <dl className="settings-grid">
           <div>
-            <dt>OpenAI API key</dt>
-            <dd>{keyStatus(settings.openai_api_key)}</dd>
+            <dt>Claude API key</dt>
+            <dd>{keyStatus(settings.claude_api_key)}</dd>
           </div>
           <div>
             <dt>YouTube API key</dt>
