@@ -63,7 +63,7 @@ export interface ProjectResponse {
 }
 
 export interface SettingsStatus {
-  readonly openai_api_key: boolean;
+  readonly claude_api_key: boolean;
   readonly youtube_api_key: boolean;
   readonly higgsfield_api_key: boolean;
   readonly qwen3_tts_base_url: string;
