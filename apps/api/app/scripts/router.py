@@ -10,7 +10,7 @@ from app.core.settings import AppSettings
 from app.jobs.service import append_job, update_job_state
 from app.projects.service import read_project, save_project
 from app.references.files import REFERENCE_ANALYSIS_FILE, REFERENCE_SCRIPT_FILE
-from app.references.openai_clients import AnalysisClient
+from app.references.ai_clients import AnalysisClient
 from app.production.service import (
     CONCEPT_KIT_FILENAME,
     VIDEO_SCENES_FILENAME,
@@ -96,8 +96,8 @@ def create_scripts_router(
                 "script_candidates",
                 "Generate script candidates",
                 input_paths=[REFERENCE_SCRIPT_FILE, REFERENCE_ANALYSIS_FILE],
-                provider="openai",
-                command=settings.openai_analysis_model,
+                provider="claude",
+                command=settings.claude_analysis_model,
             )
             job_id = job.job_id
             update_job_state(
@@ -107,7 +107,7 @@ def create_scripts_router(
                 "running",
                 "1차: 과학적 팩트/수치 기반 대본 본문 작성 중...",
             )
-            client = script_client_factory(settings.openai_api_key, settings.openai_analysis_model)
+            client = script_client_factory(settings.claude_api_key, settings.claude_analysis_model)
             prompt = build_candidate_generation_prompt(reference_script, reference_analysis, feedback)
             response_payload = client.analyze(prompt)
             candidates = validate_candidate_payload(response_payload)
@@ -203,8 +203,8 @@ def create_scripts_router(
                 "final_script",
                 "Finalize TTS script",
                 input_paths=[SELECTED_SCRIPT_CANDIDATE_FILE],
-                provider="openai",
-                command=settings.openai_analysis_model,
+                provider="claude",
+                command=settings.claude_analysis_model,
             )
             job_id = job.job_id
             update_job_state(outputs, project_id, job.job_id, "running", "1차: 피드백 반영 최종 낭독 대본 완성 중...")
@@ -213,7 +213,7 @@ def create_scripts_router(
                 final_script = verbatim
                 display_script = verbatim
             else:
-                client = script_client_factory(settings.openai_api_key, settings.openai_analysis_model)
+                client = script_client_factory(settings.claude_api_key, settings.claude_analysis_model)
                 response = client.analyze(build_final_script_prompt(selected, payload.feedback, current_final_script=current_script))
                 tail_bridge = selected.loop_design.tail_bridge if selected.loop_design else ""
                 final_script, display_script, returned_tail_bridge = extract_final_scripts(response, hook=selected.hook, tail_bridge=tail_bridge)
