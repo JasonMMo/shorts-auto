@@ -72,6 +72,19 @@ def test_reference_phase_env_overrides(monkeypatch, tmp_path):
     assert settings.reference_audio_filename == "custom_reference.wav"
 
 
+def test_openai_fallback_key_accepts_typo_alias(monkeypatch, tmp_path):
+    clear_settings_env(monkeypatch)
+    monkeypatch.setenv("OPENAPI_API_KEY", "typo-key")
+
+    assert load_settings(tmp_path).openai_api_key == "typo-key"
+
+    monkeypatch.setenv("OPENAI_API_KEY", "real-key")
+    settings = load_settings(tmp_path)
+
+    assert settings.openai_api_key == "real-key"
+    assert settings.openai_fallback_model == "gpt-4.1-mini"
+
+
 @pytest.mark.parametrize("output_dir", ["/tmp/outputs", "../outputs", "safe/../outputs"])
 def test_output_dir_rejects_absolute_and_traversal(
     tmp_path: Path, monkeypatch, output_dir: str
