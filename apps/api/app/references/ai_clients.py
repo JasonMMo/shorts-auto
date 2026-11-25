@@ -33,7 +33,11 @@ class LocalWhisperTranscriptionClient:
         return self._model
 
     def transcribe(self, audio_path: Path) -> dict:
-        segments_iter, info = self._load().transcribe(str(audio_path), vad_filter=True)
+        # condition_on_previous_text=True(기본값)이면 BGM이 깔린 쇼츠에서 첫 문장 뒤
+        # 디코딩이 멈춰 세그먼트가 1개만 나온다 (58초 음원 → 1문장). 끄면 전체가 전사된다.
+        segments_iter, info = self._load().transcribe(
+            str(audio_path), vad_filter=True, condition_on_previous_text=False
+        )
         segments = [
             {"id": i, "start": float(s.start), "end": float(s.end), "text": s.text.strip()}
             for i, s in enumerate(segments_iter)
