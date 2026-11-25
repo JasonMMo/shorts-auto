@@ -1,7 +1,14 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
+
+# Windows 콘솔/리다이렉트 기본 인코딩(cp949)은 로그의 이모지(🎬 등)를 인코딩하지 못해
+# print 한 줄 때문에 요청 전체가 UnicodeEncodeError로 실패한다. 출력을 UTF-8로 고정한다.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 
 # `uv run`은 PYTHONHOME을 자신의 파이썬으로 지정한다. 서버가 띄우는 다른 파이썬
 # 기반 CLI(yt-dlp 등)가 이를 상속하면 표준 라이브러리 버전이 어긋나 즉시 죽으므로,
