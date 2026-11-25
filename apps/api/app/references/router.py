@@ -59,7 +59,7 @@ def create_references_router(
     youtube_client_factory: Callable[[str], YouTubeClient] = YouTubeClient,
     audio_extractor: Callable[[Path, str, str], Path] = extract_reference_audio,
     transcription_client_factory: Callable[[str, str], TranscriptionClient] = LocalWhisperTranscriptionClient,
-    analysis_client_factory: Callable[[str, str], AnalysisClient] = ClaudeAnalysisClient,
+    analysis_client_factory: Callable[..., AnalysisClient] = ClaudeAnalysisClient,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/projects/{project_id}/reference", tags=["reference"])
 
@@ -498,7 +498,12 @@ def create_references_router(
                 analysis_state="running",
                 analysis_message="Analyzing reference script.",
             )
-            client = analysis_client_factory(settings.claude_api_key, settings.claude_analysis_model)
+            client = analysis_client_factory(
+                settings.claude_api_key,
+                settings.claude_analysis_model,
+                openai_api_key=settings.openai_api_key,
+                openai_model=settings.openai_fallback_model,
+            )
             analysis = client.analyze(build_analysis_prompt(script))
             markdown = write_reference_analysis(path, analysis)
             project = read_project(outputs, project_id)
