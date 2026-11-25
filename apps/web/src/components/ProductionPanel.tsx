@@ -202,8 +202,8 @@ export function ProductionPanel({
   onDeleteThumbnail
 }: ProductionPanelProps) {
   const [expandedPromptId, setExpandedPromptId] = useState<number | null>(null);
-  const [imageModel, setImageModel] = useState<string>("nano_banana_pro");
-  const [videoModel, setVideoModel] = useState<string>("wan3_0");
+  const [imageModel, setImageModel] = useState<string>("flow_nano_pro");
+  const [videoModel, setVideoModel] = useState<string>("flow_veo_lite");
   const isCurrentFlowVideo = videoModel.startsWith("flow_") || videoModel.endsWith("_flow") || VIDEO_MODELS.find((m) => m.id === videoModel)?.platform === "flow";
   const isCurrentFlowImage = imageModel.startsWith("flow_") || imageModel.endsWith("_flow") || IMAGE_MODELS.find((m) => m.id === imageModel)?.platform === "flow";
 
