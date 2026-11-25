@@ -1,6 +1,15 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
+
+# `uv run`은 PYTHONHOME을 자신의 파이썬으로 지정한다. 서버가 띄우는 다른 파이썬
+# 기반 CLI(yt-dlp 등)가 이를 상속하면 표준 라이브러리 버전이 어긋나 즉시 죽으므로,
+# uv가 넣은 값일 때만 제거한다. 이미 실행 중인 서버 인터프리터에는 영향이 없다.
+if os.environ.get("PYTHONHOME") and os.environ.get("PYTHONHOME") == os.environ.get(
+    "UV_INTERNAL__PYTHONHOME"
+):
+    del os.environ["PYTHONHOME"]
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
