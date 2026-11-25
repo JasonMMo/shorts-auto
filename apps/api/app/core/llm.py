@@ -6,8 +6,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_CLAUDE_MODEL = "claude-opus-5-5"
 DEFAULT_MAX_TOKENS = 16000
@@ -17,12 +20,66 @@ FALLBACK_BETA = "server-side-fallback-2026-07-01"
 _FENCE_RE = re.compile(r"^```[a-zA-Z0-9_-]*\s*\n?|\n?```\s*$")
 
 
-def create_claude_client(api_key: str):
+DEFAULT_OPENAI_FALLBACK_MODEL = "gpt-4.1-mini"
+
+
+class OpenAIFallback:
+    """Claude가 한도에 걸렸을 때만 쓰는 OpenAI chat.completions 대체 경로."""
+
+    def __init__(self, api_key: str, model: str = DEFAULT_OPENAI_FALLBACK_MODEL, client: Any = None):
+        self.model = model or DEFAULT_OPENAI_FALLBACK_MODEL
+        if client is None:
+            from openai import OpenAI
+
+            client = OpenAI(api_key=api_key)
+        self.client = client
+
+    def complete(self, prompt: str, *, system: str | None, max_tokens: int) -> str:
+        messages = [{"role": "system", "content": system}] if system else []
+        messages.append({"role": "user", "content": prompt})
+        response = self.client.chat.completions.create(
+            model=self.model, messages=messages, max_completion_tokens=max_tokens
+        )
+        return (response.choices[0].message.content or "").strip()
+
+
+class ClaudeClientWithFallback:
+    """Anthropic 클라이언트에 OpenAI 폴백을 붙인 래퍼. claude_text가 폴백을 찾아 쓴다."""
+
+    def __init__(self, claude: Any, openai_fallback: OpenAIFallback):
+        self.beta = claude.beta
+        self.openai_fallback = openai_fallback
+
+
+def is_claude_limit_error(exc: Exception) -> bool:
+    """rate limit(429) 또는 크레딧/사용 한도 소진(400)이면 True."""
+    status = getattr(exc, "status_code", None)
+    if status == 429:
+        return True
+    if status == 400:
+        message = str(exc).lower()
+        return "credit balance" in message or "usage limit" in message
+    return False
+
+
+def create_claude_client(api_key: str, *, openai_api_key: str = "", openai_model: str = ""):
     if not api_key:
         raise ValueError("Claude API key is missing (set CLAUDE_API_KEY)")
     import anthropic
 
-    return anthropic.Anthropic(api_key=api_key)
+    client = anthropic.Anthropic(api_key=api_key)
+    if openai_api_key:
+        return ClaudeClientWithFallback(client, OpenAIFallback(openai_api_key, openai_model))
+    return client
+
+
+def create_llm_client(settings: Any):
+    """설정에서 Claude 클라이언트(+OpenAI 키가 있으면 한도 폴백)를 만든다."""
+    return create_claude_client(
+        settings.claude_api_key,
+        openai_api_key=getattr(settings, "openai_api_key", ""),
+        openai_model=getattr(settings, "openai_fallback_model", ""),
+    )
 
 
 def claude_text(
@@ -43,7 +100,14 @@ def claude_text(
     }
     if system:
         kwargs["system"] = system
-    response = client.beta.messages.create(**kwargs)
+    try:
+        response = client.beta.messages.create(**kwargs)
+    except Exception as exc:
+        fallback = getattr(client, "openai_fallback", None)
+        if fallback is None or not is_claude_limit_error(exc):
+            raise
+        logger.warning("Claude limit hit (%s); falling back to OpenAI %s", exc, fallback.model)
+        return fallback.complete(prompt, system=system, max_tokens=max_tokens)
     if getattr(response, "stop_reason", None) == "refusal":
         details = getattr(response, "stop_details", None)
         category = getattr(details, "category", None) if details else None
