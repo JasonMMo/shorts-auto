@@ -12,7 +12,7 @@ from typing import Any
 
 import httpx
 
-from app.core.llm import DEFAULT_CLAUDE_MODEL, claude_json, claude_text, create_claude_client, parse_json_text
+from app.core.llm import DEFAULT_CLAUDE_MODEL, claude_json, claude_text, create_llm_client, parse_json_text
 from app.core.paths import find_repo_root
 from app.core.settings import AppSettings
 from app.production.models import (
@@ -338,7 +338,7 @@ def align_subtitles_and_scenes_for_project(project_dir: Path, settings: AppSetti
 
     # 2. LLM 대본 대조 교정
     # 키가 없으면 교정 단계를 건너뛰고 STT 원문을 그대로 쓴다
-    client = create_claude_client(settings.claude_api_key) if settings.claude_api_key else None
+    client = create_llm_client(settings) if settings.claude_api_key else None
     refined_texts = _refine_stt_text_with_llm(
         client, valid_segments, script_text, model=settings.claude_analysis_model
     )
@@ -566,7 +566,7 @@ def generate_concept_kit_and_video_scenes(
     sentence_count = len(sentences)
     numbered_sentences = "\n".join([f"{i+1}. {s}" for i, s in enumerate(sentences)])
 
-    client = create_claude_client(settings.claude_api_key)
+    client = create_llm_client(settings)
     prompt = f"""
 당신은 세계 최고의 AI 쇼츠 영상 디렉터입니다. {style.system_persona}
 주어진 쇼츠 대본과 STT 타임스탬프를 바탕으로:
@@ -2040,7 +2040,7 @@ def refine_and_regenerate_scene(
         except Exception:
             pass
 
-    client = create_claude_client(settings.claude_api_key)
+    client = create_llm_client(settings)
 
     # 🎬 씬 매칭(원테이크) 여부에 따른 조건부 프레이밍 분기:
     # 체크된 경우(is_matched_mode = True):
@@ -2435,7 +2435,7 @@ def recommend_motion_for_scene(
 
     if settings.claude_api_key:
         try:
-            client = create_claude_client(settings.claude_api_key)
+            client = create_llm_client(settings)
             prompt = f"""당신은 세계 최고의 AI 쇼츠 카메라 연출 감독이자 프롬프트 엔지니어입니다.
 aicameramovements.com의 12대 핵심 카메라 모션 라이브러리를 바탕으로, 현재 씬의 대본 문맥과 시각적 상황에 가장 극적인 몰입감과 텐션을 주는 상위 2~3개의 카메라 모션을 추천하고, 각각에 대한 완성형 비디오 프롬프트를 작성하세요.
 
@@ -2554,7 +2554,7 @@ def apply_motion_to_scene(
     new_prompt = ""
     if settings and settings.claude_api_key:
         try:
-            client = create_claude_client(settings.claude_api_key)
+            client = create_llm_client(settings)
             prompt = f"""당신은 AI 쇼츠 영상 디렉터입니다.
 현재 씬에 지정된 카메라 모션 '{movement_name}'(ID: {movement_id})을 적용하여, aicameramovements.com 표준 영문 4단 문법으로 완성도 높은 비디오 프롬프트를 작성하세요.
 
