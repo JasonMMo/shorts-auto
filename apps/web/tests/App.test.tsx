@@ -93,7 +93,7 @@ const project: Project = {
 };
 
 const settings: SettingsStatus = {
-  openai_api_key: true,
+  claude_api_key: true,
   youtube_api_key: false,
   higgsfield_api_key: false,
   qwen3_tts_base_url: "http://127.0.0.1:8001",
