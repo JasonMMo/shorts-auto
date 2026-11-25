@@ -37,6 +37,9 @@ class AppSettings(BaseModel):
     whisper_model: str = "small"
     whisper_device: str = "cpu"
     claude_analysis_model: str = "claude-opus-5-5"
+    # Claude가 rate limit(429)·크레딧 소진에 걸리면 이 키로 OpenAI에 재시도한다. 비우면 폴백 없음.
+    openai_api_key: str = ""
+    openai_fallback_model: str = "gpt-4.1-mini"
     yt_dlp_binary: str = "yt-dlp"
     reference_audio_filename: str = "reference_audio.wav"
     subtitle_style: SubtitleStyle = Field(default_factory=SubtitleStyle)
@@ -68,6 +71,10 @@ ENV_TO_FIELD = {
     "WHISPER_MODEL": "whisper_model",
     "WHISPER_DEVICE": "whisper_device",
     "CLAUDE_ANALYSIS_MODEL": "claude_analysis_model",
+    # OPENAPI_API_KEY는 흔한 오타 표기라 함께 받는다 (OPENAI_API_KEY 우선)
+    "OPENAPI_API_KEY": "openai_api_key",
+    "OPENAI_API_KEY": "openai_api_key",
+    "OPENAI_FALLBACK_MODEL": "openai_fallback_model",
     "YT_DLP_BINARY": "yt_dlp_binary",
     "REFERENCE_AUDIO_FILENAME": "reference_audio_filename",
 }
