@@ -9,7 +9,7 @@ describe("SettingsPanel", () => {
     render(
       <SettingsPanel
         settings={{
-          openai_api_key: true,
+          claude_api_key: true,
           youtube_api_key: false,
           higgsfield_api_key: true,
           qwen3_tts_base_url: "http://127.0.0.1:7860",
