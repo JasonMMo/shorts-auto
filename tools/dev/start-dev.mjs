@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
 export function buildDevProcesses() {
   return [
@@ -30,6 +31,8 @@ export function startDevProcesses(processes = buildDevProcesses()) {
   const children = processes.map((processConfig) => {
     const child = spawn(processConfig.command, processConfig.args, {
       env: process.env,
+      // Windows에서 pnpm은 pnpm.cmd라 셸을 거쳐야 실행된다
+      shell: process.platform === "win32",
       stdio: ["ignore", "pipe", "pipe"]
     });
     child.stdout.on("data", (chunk) => prefixOutput(processConfig.name, process.stdout, chunk));
@@ -61,6 +64,6 @@ export function startDevProcesses(processes = buildDevProcesses()) {
   return children;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   startDevProcesses();
 }
