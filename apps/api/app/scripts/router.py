@@ -50,7 +50,7 @@ from app.scripts.models import (
 def create_scripts_router(
     outputs_dir_provider: Callable[[], Path],
     settings_provider: Callable[[], AppSettings],
-    script_client_factory: Callable[[str, str], AnalysisClient],
+    script_client_factory: Callable[..., AnalysisClient],
 ) -> APIRouter:
     router = APIRouter(prefix="/api/projects/{project_id}/scripts", tags=["scripts"])
 
@@ -107,7 +107,12 @@ def create_scripts_router(
                 "running",
                 "1차: 과학적 팩트/수치 기반 대본 본문 작성 중...",
             )
-            client = script_client_factory(settings.claude_api_key, settings.claude_analysis_model)
+            client = script_client_factory(
+                settings.claude_api_key,
+                settings.claude_analysis_model,
+                openai_api_key=settings.openai_api_key,
+                openai_model=settings.openai_fallback_model,
+            )
             prompt = build_candidate_generation_prompt(reference_script, reference_analysis, feedback)
             response_payload = client.analyze(prompt)
             candidates = validate_candidate_payload(response_payload)
@@ -213,7 +218,12 @@ def create_scripts_router(
                 final_script = verbatim
                 display_script = verbatim
             else:
-                client = script_client_factory(settings.claude_api_key, settings.claude_analysis_model)
+                client = script_client_factory(
+                    settings.claude_api_key,
+                    settings.claude_analysis_model,
+                    openai_api_key=settings.openai_api_key,
+                    openai_model=settings.openai_fallback_model,
+                )
                 response = client.analyze(build_final_script_prompt(selected, payload.feedback, current_final_script=current_script))
                 tail_bridge = selected.loop_design.tail_bridge if selected.loop_design else ""
                 final_script, display_script, returned_tail_bridge = extract_final_scripts(response, hook=selected.hook, tail_bridge=tail_bridge)
