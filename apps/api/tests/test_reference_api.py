@@ -69,7 +69,7 @@ class FailingYouTubeClient:
 
 
 class FakeTranscriptionClient:
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, **kwargs):
         self.api_key = api_key
         self.model = model
 
@@ -81,7 +81,7 @@ class FakeTranscriptionClient:
 
 
 class FailingTranscriptionClient:
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, **kwargs):
         self.api_key = api_key
         self.model = model
 
@@ -90,7 +90,7 @@ class FailingTranscriptionClient:
 
 
 class FakeAnalysisClient:
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, **kwargs):
         self.api_key = api_key
         self.model = model
 
@@ -116,7 +116,7 @@ class FakeAnalysisClient:
 
 
 class FailingAnalysisClient:
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, **kwargs):
         self.api_key = api_key
         self.model = model
 
@@ -125,7 +125,7 @@ class FailingAnalysisClient:
 
 
 class InvalidAnalysisClient:
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, **kwargs):
         self.api_key = api_key
         self.model = model
 
