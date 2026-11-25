@@ -32,7 +32,7 @@ const project = {
       job_id: "job-1",
       job_type: "analysis",
       label: "Analyze reference",
-      provider: "openai",
+      provider: "claude",
       command: "analyze reference",
       state: "running",
       created_at: "2026-10-11T21:31:00Z",
