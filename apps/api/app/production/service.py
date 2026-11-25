@@ -1143,6 +1143,10 @@ def _get_gflow_home() -> Path:
     env_home = os.environ.get("GFLOW_CLI_HOME")
     if env_home:
         return Path(env_home).expanduser().resolve()
+    if os.name == "nt":
+        # gflow-cli는 platformdirs(appauthor="ffroliva")를 쓴다 → %LOCALAPPDATA%\ffroliva\gflow-cli
+        local_appdata = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData/Local")
+        return Path(local_appdata) / "ffroliva" / "gflow-cli"
     mac_home = Path.home() / "Library/Application Support/gflow-cli"
     if mac_home.exists():
         return mac_home
@@ -1302,6 +1306,8 @@ def _build_flow_env() -> dict[str, str]:
     env = os.environ.copy()
     env["GFLOW_CLI_TELEMETRY"] = "0"
     env["GFLOW_CLI_LEASE_WAIT_SECONDS"] = "180"
+    # Windows 콘솔 기본 cp949로는 gflow 출력(—, 이모지 등) 인코딩에 실패한다.
+    env["PYTHONIOENCODING"] = "utf-8"
     return env
 
 
