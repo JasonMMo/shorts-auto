@@ -197,7 +197,7 @@ def _get_video_duration(video_path: Path) -> float:
         str(video_path)
     ]
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True)
         return float(res.stdout.strip())
     except Exception:
         return 6.0
@@ -327,7 +327,7 @@ def render_thumbnail_image(
         f"--output={target_thumb.resolve()}",
     ]
 
-    res = subprocess.run(cmd, capture_output=True, text=True, cwd=str(repo_root))
+    res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=str(repo_root))
     if res.returncode != 0:
         shutil.copy2(bg_tmp, target_thumb)
 
@@ -599,7 +599,7 @@ def render_final_shorts(
         f"--output={final_output_path.resolve()}",
     ]
 
-    res = subprocess.run(render_cmd, capture_output=True, text=True, cwd=str(repo_root))
+    res = subprocess.run(render_cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=str(repo_root))
     if res.returncode != 0:
         raise RuntimeError(f"Remotion 쇼츠 렌더링 실패: {res.stderr or res.stdout}")
 
