@@ -6,7 +6,7 @@ from app.main import create_app
 
 
 class FakeScriptClient:
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, **kwargs):
         self.api_key = api_key
         self.model = model
 
@@ -70,7 +70,7 @@ class FakeScriptClient:
 
 
 class FailingScriptClient:
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, **kwargs):
         self.api_key = api_key
         self.model = model
 
