@@ -128,6 +128,10 @@ cp .env.example .env
 # [필수] Claude API 키 (대본 분석/생성에 사용, 기본 모델 claude-opus-5-5)
 CLAUDE_API_KEY=sk-ant-...
 
+# [선택] Claude가 rate limit(429)·크레딧 소진에 걸렸을 때만 OpenAI로 재시도
+OPENAI_API_KEY=sk-proj-...
+OPENAI_FALLBACK_MODEL=gpt-4.1-mini
+
 # [선택] 로컬 STT(faster-whisper) 모델 크기와 장치
 WHISPER_MODEL=small
 WHISPER_DEVICE=cpu
@@ -267,6 +271,9 @@ pnpm --filter @shorts-auto/web build
 
 #### Q5. `Claude API key is missing` 오류가 납니다.
 - **해결:** 저장소 루트의 `.env`에 `CLAUDE_API_KEY`(또는 `ANTHROPIC_API_KEY`)를 넣고 서버를 다시 시작하세요. 분석 모델은 `CLAUDE_ANALYSIS_MODEL`로 바꿀 수 있습니다.
+
+#### Q5-1. `Your credit balance is too low` / rate limit 오류가 납니다.
+- **답변:** `.env`에 `OPENAI_API_KEY`가 있으면 Claude가 429(rate limit)나 크레딧 소진으로 실패한 호출만 OpenAI(`OPENAI_FALLBACK_MODEL`, 기본 `gpt-4.1-mini`)로 자동 재시도합니다. 그 밖의 오류는 그대로 표시됩니다. 키가 없으면 폴백하지 않습니다.
 
 #### Q6. DALL-E 3 모델이 목록에서 사라졌습니다.
 - **답변:** Claude에는 이미지 생성 API가 없어 DALL-E 경로를 제거했습니다. Higgsfield 또는 Google Flow 이미지 모델을 선택하세요.
