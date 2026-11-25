@@ -134,7 +134,7 @@ def _change_audio_speed(input_file: Path, output_file: Path, rate: float = SPEED
         str(output_file),
         "-y",
     ]
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if res.returncode != 0:
         raise RuntimeError(f"ffmpeg 배속 변환 실패: {res.stderr}")
 
@@ -146,7 +146,7 @@ def _get_audio_duration(file_path: Path) -> float:
         "-of", "default=noprint_wrappers=1:nokey=1",
         str(file_path),
     ]
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if res.returncode == 0:
         try:
             return float(res.stdout.strip())
@@ -1366,7 +1366,7 @@ def _run_flow_image_generate(
                 "-o", str(output_path),
                 "--json",
             ]
-        res = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=timeout_minutes * 60)
+        res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=timeout_minutes * 60)
 
     # gflow-cli는 Google CDN에서 다운로드 시 실제 미디어 포맷(JPEG)에 맞게 확장자를 .jpg 등으로 변경하여 저장함
     actual_file: Path | None = None
@@ -1491,7 +1491,7 @@ def _run_flow_video_generate(
                 use_duration_first = bool(duration)
                 cmd = build_cmd(use_duration=use_duration_first)
                 try:
-                    res = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=timeout_seconds)
+                    res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=timeout_seconds)
                 except subprocess.TimeoutExpired:
                     print(f"[Flow Video] ⏱️ 5분({timeout_seconds}초) 초과로 타임아웃 발생 (시도 {attempt}/{max_retries}). 프로세스 정리 후 재시도합니다.")
                     last_error = f"5분 타임아웃 초과 (시도 {attempt})"
@@ -1502,7 +1502,7 @@ def _run_flow_video_generate(
                     time.sleep(3)
                     cmd = build_cmd(use_duration=False)
                     try:
-                        res = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=timeout_seconds)
+                        res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=timeout_seconds)
                         err_text = (res.stderr or "") + (res.stdout or "")
                     except subprocess.TimeoutExpired:
                         print(f"[Flow Video] ⏱️ 5분({timeout_seconds}초) 초과로 타임아웃 발생 (시도 {attempt}/{max_retries}). 프로세스 정리 후 재시도합니다.")
@@ -1528,7 +1528,7 @@ def _run_flow_video_generate(
                                     "--profile", profile_name,
                                     "--out", str(recovery_dir),
                                 ]
-                                subprocess.run(download_cmd, capture_output=True, text=True, env=env, timeout=120)
+                                subprocess.run(download_cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=120)
                                 cand = recovery_dir / f"{media_id}.mp4"
                                 if cand.exists() and cand.stat().st_size > 1000:
                                     cand.replace(output_path)
@@ -1581,6 +1581,21 @@ MODEL_ALIAS_MAP = {
 _higgsfield_lock = threading.Lock()
 
 
+def _resolve_node_cli(name: str, js_entry: str) -> list[str]:
+    """npm 전역 CLI 실행 인자를 돌려준다.
+
+    Windows의 npm 전역 설치는 `name.cmd` shim이라 subprocess가 이름만으로 찾지 못하고(WinError 2),
+    .cmd를 거치면 cmd.exe가 프롬프트의 `%`를 변수로 해석한다. 그래서 shim 옆의 JS 진입점을 node로 직접 실행한다.
+    """
+    found = shutil.which(name)
+    if os.name == "nt" and found and found.lower().endswith((".cmd", ".bat")):
+        script = Path(found).parent / "node_modules" / js_entry
+        node = Path(found).parent / "node.exe"
+        if script.exists():
+            return [str(node) if node.exists() else (shutil.which("node") or "node"), str(script)]
+    return [found or name]
+
+
 def _run_higgsfield_generate(
     job_type: str,
     prompt: str,
@@ -1597,7 +1612,8 @@ def _run_higgsfield_generate(
     resolved_job_type = MODEL_ALIAS_MAP.get(job_type, job_type)
 
     cmd = [
-        "higgsfield", "generate", "create", resolved_job_type,
+        *_resolve_node_cli("higgsfield", "@higgsfield/cli/bin/higgsfield.js"),
+        "generate", "create", resolved_job_type,
         "--prompt", prompt,
         "--aspect-ratio", aspect_ratio,
         "--wait",
@@ -1650,7 +1666,7 @@ def _run_higgsfield_generate(
     # 힉스필드 계정 동시성 한도(1개) 보호를 위해 전역 락 진입 후 순차 실행
     with _higgsfield_lock:
         for attempt in range(1, max_retries + 1):
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_minutes * 60)
+            res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout_minutes * 60)
             if res.returncode == 0:
                 break
 
