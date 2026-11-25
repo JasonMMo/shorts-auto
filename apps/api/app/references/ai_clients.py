@@ -56,8 +56,17 @@ class AnalysisClient(Protocol):
 
 
 class ClaudeAnalysisClient:
-    def __init__(self, api_key: str, model: str = DEFAULT_CLAUDE_MODEL):
-        self.client = create_claude_client(api_key)
+    def __init__(
+        self,
+        api_key: str,
+        model: str = DEFAULT_CLAUDE_MODEL,
+        *,
+        openai_api_key: str = "",
+        openai_model: str = "",
+    ):
+        self.client = create_claude_client(
+            api_key, openai_api_key=openai_api_key, openai_model=openai_model
+        )
         self.model = model or DEFAULT_CLAUDE_MODEL
 
     def analyze(self, prompt: str) -> dict:
