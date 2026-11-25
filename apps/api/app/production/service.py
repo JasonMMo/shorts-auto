@@ -1357,7 +1357,7 @@ def _run_flow_image_generate(
                 "--profile", profile_name,
                 "--model", model_alias,
                 "--aspect", aspect_ratio,
-                "-o", str(output_path),
+                "--out-file", str(output_path),
                 "--json",
             ]
             for ref_p in valid_refs:
@@ -1369,7 +1369,7 @@ def _run_flow_image_generate(
                 "--profile", profile_name,
                 "--model", model_alias,
                 "--aspect", aspect_ratio,
-                "-o", str(output_path),
+                "--out-file", str(output_path),
                 "--json",
             ]
         res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=timeout_minutes * 60)
@@ -1477,7 +1477,7 @@ def _run_flow_video_generate(
                         "--profile", profile_name,
                         "--model", model_alias,
                         "--aspect", aspect_ratio,
-                        "-o", str(output_path),
+                        "--out-file", str(output_path),
                         "--json",
                     ]
                     if start_image and start_image.exists():
